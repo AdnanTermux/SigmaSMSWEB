@@ -1,26 +1,32 @@
-FROM php:8.2-apache
+FROM php:8.2-fpm
 
 RUN docker-php-ext-install pdo pdo_mysql
 
-# Disable mpm_event in Apache's environment variables
-# This prevents the entrypoint script from re-enabling it
-RUN echo "APACHE_MODS_DISABLED='mpm_event'" >> /etc/apache2/envvars
+# Install and configure Nginx instead of Apache
+RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
 
-# Ensure only mpm_prefork is enabled
-RUN rm -f /etc/apache2/mods-enabled/mpm_event.load /etc/apache2/mods-enabled/mpm_event.conf
-RUN a2enmod mpm_prefork
-RUN a2enmod rewrite
+# Copy Nginx config
+RUN mkdir -p /etc/nginx/conf.d
+RUN echo 'server { \
+    listen ${PORT:-8080}; \
+    server_name _; \
+    root /var/www/html; \
+    index index.php; \
+    location ~ \.php$ { \
+        fastcgi_pass 127.0.0.1:9000; \
+        fastcgi_index index.php; \
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name; \
+        include fastcgi_params; \
+    } \
+}' > /etc/nginx/conf.d/default.conf
 
 WORKDIR /var/www/html
 COPY . /var/www/html
 
 RUN chown -R www-data:www-data /var/www/html
 
-ENV APACHE_DOCUMENT_ROOT=/var/www/html
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf \
-    && sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+# Start both PHP-FPM and Nginx
+CMD php-fpm -D && nginx -g "daemon off;"
 
-# Configure Apache to listen on Railway's PORT (default 8080)
-RUN sed -i 's/Listen 80/Listen ${PORT}/g' /etc/apache2/ports.conf
 ENV PORT=8080
 EXPOSE 8080
