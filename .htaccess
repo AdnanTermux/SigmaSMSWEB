@@ -1,0 +1,49 @@
+# Sigma SMS A2P — Apache Configuration
+
+Options -Indexes
+Options -ExecCGI
+
+# Block direct access to sensitive files
+<FilesMatch "(config\.php|functions\.php|schema\.sql|\.env|composer\.(json|lock))$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Block access to install.php after installation (uncomment after install)
+# <Files "install.php">
+#     Order allow,deny
+#     Deny from all
+# </Files>
+
+# Rewrite engine
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Block access to includes directory
+    RewriteRule ^includes/ - [F,L]
+
+    # Force www (optional, uncomment if needed)
+    # RewriteCond %{HTTP_HOST} !^www\.
+    # RewriteRule ^(.*)$ https://www.%{HTTP_HOST}/$1 [R=301,L]
+</IfModule>
+
+# Security headers
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options nosniff
+    Header always set X-Frame-Options SAMEORIGIN
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# PHP settings
+<IfModule mod_php.c>
+    php_flag display_errors off
+    php_value session.cookie_httponly 1
+    php_value session.use_strict_mode 1
+</IfModule>
+
+# Compression
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css text/javascript application/javascript application/json
+</IfModule>
