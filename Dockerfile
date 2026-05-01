@@ -2,8 +2,10 @@ FROM php:8.2-apache
 
 RUN docker-php-ext-install pdo pdo_mysql
 
-# Disable conflicting MPM module — php:8.2-apache requires mpm_prefork for mod_php
-RUN a2dismod mpm_event && a2enmod mpm_prefork
+# Disable conflicting MPM module by removing the symlink
+# php:8.2-apache requires mpm_prefork for mod_php
+RUN rm -f /etc/apache2/mods-enabled/mpm_event.load /etc/apache2/mods-enabled/mpm_event.conf
+RUN a2enmod mpm_prefork
 RUN a2enmod rewrite
 
 WORKDIR /var/www/html
